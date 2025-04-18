@@ -58,3 +58,18 @@ def chunk_by_tokens(
     return out
 
 # Chapter-based chunker
+def chunk_by_chapter(
+    structured: List[Tuple[str, str, Optional[str]]]
+) -> List[Tuple[str, str, str]]:
+    if not structured:
+        return []
+    out, chunk, marks, cur_title = [], [], [], DEFAULT_TITLE
+    for sent, mark, heading in structured:
+        if heading and heading != cur_title:
+            if chunk:
+                out.append((" ".join(chunk), marks[0], cur_title))
+            chunk, marks, cur_title = [], [], heading
+        chunk.append(sent)
+        marks.append(mark)
+    out.append((" ".join(chunk), marks[0], cur_title))
+    return out
