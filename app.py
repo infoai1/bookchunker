@@ -9,7 +9,7 @@ from utils import ensure_punkt, get_tokenizer
 from file_processor import extract_sentences_with_structure
 from chunker import chunk_by_tokens, chunk_by_chapter
 
-# Load JSON map (for manual review)
+# Load JSON map (manual review overrides; not applied by default)
 GLYPH_MAP_PATH = os.path.join(os.path.dirname(__file__), "glyph_map.json")
 try:
     with open(GLYPH_MAP_PATH, "r", encoding="utf-8") as f:
@@ -17,21 +17,21 @@ try:
 except FileNotFoundError:
     DOMAIN_MAP = {}
 
-# Regex patterns for cleaning and detection
+# Regex patterns for detection and cleaning
 BROKEN_GLYP = re.compile(r"\b\w*!+\w*\b")
 RE_PNO      = re.compile(r"^\d+\s+")
 RE_MID_FI   = re.compile(r"([A-Za-z])!([A-Za-z])")
 
-# Cleaning function (ftfy + basic fixes)
+# Cleaning function: ftfy + basic fixes
 def clean_chunk(raw: str) -> str:
-    t = ftfy.fix_text(raw)
-    t = t.replace("\n", " ")
-    t = RE_PNO.sub("", t)
-    t = RE_MID_FI.sub(r"\1fi\2", t)
-    # Domain_map not applied automatically
-    return re.sub(r"\s+", " ", t).strip()
+    text = ftfy.fix_text(raw)
+    text = text.replace("\n", " ")
+    text = RE_PNO.sub("", text)
+    text = RE_MID_FI.sub(r"\1fi\2", text)
+    # DOMAIN_MAP not auto-applied
+    return re.sub(r"\s+", " ", text).strip()
 
-# Streamlit app
+# Streamlit UI
 st.set_page_config(page_title="📚 Book-to-Chunks", layout="wide")
 st.title("📚 Book-to-Chunks Converter")
 
@@ -50,7 +50,7 @@ with st.sidebar:
     go = st.button("🚀 Process")
 
 if go and f:
-    # Extract raw sentences
+    # 1) Extraction
     ensure_punkt()
     tokenizer = get_tokenizer()
     st.info("Extracting…")
@@ -60,23 +60,29 @@ if go and f:
         pdf_first_page_offset=first, heading_criteria=None,
         regex=regex, max_heading_words=12
     )
-    # Chunk
+
+    # 2) Chunking
     st.info("Chunking…")
-    chunks = (chunk_by_tokens(raw_structured, tokenizer)
-              if mode.startswith("~") else chunk_by_chapter(raw_structured))
+    if mode.startswith("~"):
+        chunks = chunk_by_tokens(raw_structured, tokenizer)
+    else:
+        chunks = chunk_by_chapter(raw_structured)
     st.success(f"{len(chunks):,} chunks created")
-    # DataFrame with raw & cleaned text
+
+    # 3) Build DataFrame
     df = pd.DataFrame(chunks, columns=["Raw Chunk", "Source Marker", "Detected Title"])
     df["Text Chunk"]    = df["Raw Chunk"].map(clean_chunk)
     df["Glyph Detected"] = df["Raw Chunk"].map(lambda x: ", ".join(set(BROKEN_GLYP.findall(x))))
-    # Review ligatures
+
+    # 4) Review glyphs if any
     if df["Glyph Detected"].any():
         st.warning("⚠️ Some chunks contain un-mapped ligatures — please review below")
         st.dataframe(df[df["Glyph Detected"] != ""], use_container_width=True)
         st.stop()
-    # Display & Download
+
+    # 5) Display & Download
     st.dataframe(df[["Text Chunk", "Source Marker", "Detected Title"]], use_container_width=True)
-    csv = df[["Text Chunk", "Source Marker", "Detected Title"]].to_csv(index=False).encode()
-    st.download_button("📥 Download CSV", csv, file_name=f"{f.name.rsplit('.',1)[0]}_chunks.csv")
+    csv_data = df[["Text Chunk", "Source Marker", "Detected Title"]].to_csv(index=False).encode()
+    st.download_button("📥 Download CSV", csv_data, file_name=f"{f.name.rsplit('.',1)[0]}_chunks.csv")
 else:
     st.write("👈 Upload a file & hit **Process**")
