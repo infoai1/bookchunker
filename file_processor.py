@@ -16,7 +16,10 @@ RE_MID_FI   = re.compile(r"([A-Za-z])!([A-Za-z])")
 
 # Clean a raw text block
 def _clean_text(raw: str) -> str:
-    txt = raw.replace("\n", " ")
+    txt = raw.replace("
+", " ")
+    # Fix split 'The' glyph if OCR dropped 'h'
+    txt = txt.replace("Te ", "The ")
     txt = RE_PNO_LEAD.sub("", txt)
     txt = RE_MID_FI.sub(r"\1fi\2", txt)
     return RE_WS.sub(" ", txt).strip()
