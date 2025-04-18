@@ -5,8 +5,7 @@ from typing import List, Tuple, Optional, Dict
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-)
+    format="%(asctime)s | %(levelname)s | %(message)s",)
 
 # Basic text cleaner patterns
 RE_WS       = re.compile(r"\s+")
