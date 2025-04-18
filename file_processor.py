@@ -5,7 +5,8 @@ from typing import List, Tuple, Optional, Dict
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",)
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
 
 # Basic text cleaner patterns
 RE_WS       = re.compile(r"\s+")
@@ -15,10 +16,8 @@ RE_MID_FI   = re.compile(r"([A-Za-z])!([A-Za-z])")
 
 # Clean a raw text block
 def _clean_text(raw: str) -> str:
-    txt = raw.replace("
-", " ")
-    # Fix split 'The' glyph if OCR dropped 'h'
-    txt = txt.replace("Te ", "The ")
+    txt = raw.replace("\n", " ")
+    txt = txt.replace("Te ", "The ")  # fix split 'The'
     txt = RE_PNO_LEAD.sub("", txt)
     txt = RE_MID_FI.sub(r"\1fi\2", txt)
     return RE_WS.sub(" ", txt).strip()
